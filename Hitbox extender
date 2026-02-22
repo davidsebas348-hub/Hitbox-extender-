@@ -31,7 +31,7 @@ MainFrameCorner.CornerRadius = UDim.new(0,10)
 local MinimizeButton = Instance.new("TextButton", MainFrame)
 MinimizeButton.Size = UDim2.new(0,160,0,20)
 MinimizeButton.Position = UDim2.new(0,0,0,0)
-MinimizeButton.Text = "â–¼"
+MinimizeButton.Text = "CERRAR"
 MinimizeButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
 MinimizeButton.TextColor3 = Color3.fromRGB(255,255,255)
 local MinimizeButtonCorner = Instance.new("UICorner", MinimizeButton)
@@ -85,7 +85,7 @@ MinimizeButton.MouseButton1Click:Connect(function()
     IsMinimized = not IsMinimized
     local targetSize = IsMinimized and UDim2.new(0,160,0,20) or UDim2.new(0,160,0,150)
     TweenService:Create(MainFrame, TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out), {Size = targetSize}):Play()
-    MinimizeButton.Text = IsMinimized and "â–²" or "â–¼"
+    MinimizeButton.Text = IsMinimized and "ABRIR" or "CERRAR"
 end)
 
 -- Función para aplicar hitbox

@@ -1,0 +1,172 @@
+-- GUI y Variables
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local HitboxEnabled = false
+local HitboxSize = 10
+local HitboxTransparency = 0.8
+local IsMinimized = false
+
+local OriginalSizes = {} -- guardamos tamaño original de HumanoidRootPart
+local OriginalTransparency = {} -- guardamos transparencia original
+local FakeHitboxes = {} -- hitbox falsa cuando muere
+
+-- Crear GUI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0,160,0,150)
+MainFrame.Position = UDim2.new(0.5,-80,0.5,-75)
+MainFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.BackgroundTransparency = 0.2
+local MainFrameCorner = Instance.new("UICorner", MainFrame)
+MainFrameCorner.CornerRadius = UDim.new(0,10)
+
+-- Minimize Button
+local MinimizeButton = Instance.new("TextButton", MainFrame)
+MinimizeButton.Size = UDim2.new(0,160,0,20)
+MinimizeButton.Position = UDim2.new(0,0,0,0)
+MinimizeButton.Text = "â–¼"
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+MinimizeButton.TextColor3 = Color3.fromRGB(255,255,255)
+local MinimizeButtonCorner = Instance.new("UICorner", MinimizeButton)
+MinimizeButtonCorner.CornerRadius = UDim.new(0,10)
+
+-- Size TextBox
+local SizeInput = Instance.new("TextBox", MainFrame)
+SizeInput.Size = UDim2.new(0,140,0,25)
+SizeInput.Position = UDim2.new(0,10,0,25)
+SizeInput.Text = tostring(HitboxSize)
+SizeInput.BackgroundColor3 = Color3.fromRGB(70,70,70)
+SizeInput.TextColor3 = Color3.fromRGB(255,255,255)
+local SizeInputCorner = Instance.new("UICorner", SizeInput)
+SizeInputCorner.CornerRadius = UDim.new(0,10)
+
+-- Transparency TextBox
+local TransparencyInput = Instance.new("TextBox", MainFrame)
+TransparencyInput.Size = UDim2.new(0,140,0,25)
+TransparencyInput.Position = UDim2.new(0,10,0,55)
+TransparencyInput.Text = tostring(HitboxTransparency)
+TransparencyInput.BackgroundColor3 = Color3.fromRGB(70,70,70)
+TransparencyInput.TextColor3 = Color3.fromRGB(255,255,255)
+local TransparencyInputCorner = Instance.new("UICorner", TransparencyInput)
+TransparencyInputCorner.CornerRadius = UDim.new(0,10)
+
+-- Enable Button
+local EnableButton = Instance.new("TextButton", MainFrame)
+EnableButton.Size = UDim2.new(0,140,0,25)
+EnableButton.Position = UDim2.new(0,10,0,85)
+EnableButton.Text = "Enable Hitbox"
+EnableButton.BackgroundColor3 = Color3.fromRGB(90,90,90)
+EnableButton.TextColor3 = Color3.fromRGB(255,255,255)
+local EnableButtonCorner = Instance.new("UICorner", EnableButton)
+EnableButtonCorner.CornerRadius = UDim.new(0,10)
+
+-- Funciones GUI
+SizeInput.FocusLost:Connect(function()
+    local val = tonumber(SizeInput.Text)
+    if val and val > 0 then HitboxSize = val else SizeInput.Text = tostring(HitboxSize) end
+end)
+TransparencyInput.FocusLost:Connect(function()
+    local val = tonumber(TransparencyInput.Text)
+    if val and val >= 0 and val <= 1 then HitboxTransparency = val else TransparencyInput.Text = tostring(HitboxTransparency) end
+end)
+EnableButton.MouseButton1Click:Connect(function()
+    HitboxEnabled = not HitboxEnabled
+    EnableButton.Text = HitboxEnabled and "Disable Hitbox" or "Enable Hitbox"
+    EnableButton.BackgroundColor3 = HitboxEnabled and Color3.fromRGB(0,150,0) or Color3.fromRGB(90,90,90)
+end)
+MinimizeButton.MouseButton1Click:Connect(function()
+    IsMinimized = not IsMinimized
+    local targetSize = IsMinimized and UDim2.new(0,160,0,20) or UDim2.new(0,160,0,150)
+    TweenService:Create(MainFrame, TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out), {Size = targetSize}):Play()
+    MinimizeButton.Text = IsMinimized and "â–²" or "â–¼"
+end)
+
+-- Función para aplicar hitbox
+local function ApplyHitbox(player)
+    if not player.Character then return end
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    -- Guardar original si no existe
+    if not OriginalSizes[player] then OriginalSizes[player] = root.Size end
+    if not OriginalTransparency[player] then OriginalTransparency[player] = root.Transparency end
+
+    -- Revisar colisión cada frame
+    RunService.RenderStepped:Connect(function()
+        if root.Parent == nil then return end
+        root.CanCollide = false
+    end)
+end
+
+-- Crear hitbox falsa al morir
+local function OnCharacterAdded(character, player)
+    local humanoid = character:WaitForChild("Humanoid")
+    local root = character:WaitForChild("HumanoidRootPart")
+
+    humanoid.Died:Connect(function()
+        -- Hitbox real chiquita
+        root.Size = Vector3.new(1,1,1)
+        -- Crear hitbox falsa
+        local fake = Instance.new("Part", workspace)
+        fake.Size = Vector3.new(HitboxSize,HitboxSize,HitboxSize)
+        fake.CFrame = root.CFrame
+        fake.Anchored = true
+        fake.CanCollide = false
+        fake.Transparency = HitboxTransparency
+        fake.BrickColor = BrickColor.new("Really red")
+        FakeHitboxes[player] = fake
+    end)
+
+    -- Cuando respawnea
+    ApplyHitbox(player)
+end
+
+-- RenderStepped principal
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                if HitboxEnabled then
+                    root.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+                    root.Transparency = HitboxTransparency
+                    root.BrickColor = BrickColor.new("Really red")
+                    root.Material = Enum.Material.Neon
+                    root.CanCollide = false
+                else
+                    -- Restaurar original
+                    if OriginalSizes[player] then root.Size = OriginalSizes[player] end
+                    if OriginalTransparency[player] then root.Transparency = OriginalTransparency[player] end
+                end
+            end
+
+            -- Hitbox falsa si existe
+            if FakeHitboxes[player] then
+                FakeHitboxes[player].CFrame = root.CFrame
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    -- Si respawnea, quitar hitbox falsa
+                    if player.Character.Humanoid.Health > 0 then
+                        FakeHitboxes[player]:Destroy()
+                        FakeHitboxes[player] = nil
+                        root.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Conectar a todos los jugadores
+for _, player in ipairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function(char) OnCharacterAdded(char, player) end)
+end
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char) OnCharacterAdded(char, player) end)
+end)

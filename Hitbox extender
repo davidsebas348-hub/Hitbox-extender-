@@ -1,9 +1,1 @@
-=========================
-HITBOX EXTENDER
-=========================
-loadstring(game:HttpGet("https://raw.githubusercontent.com/davidsebas348-hub/Text280/refs/heads/main/Text280.lua"))()
-=========================
-ANTI FLING
-=========================
 loadstring(game:HttpGet("https://raw.githubusercontent.com/davidsebas348-hub/Text322/refs/heads/main/Text322.lua"))()
-
